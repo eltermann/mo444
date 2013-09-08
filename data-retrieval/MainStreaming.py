@@ -5,7 +5,7 @@ from tweepy import Stream
 
 json_fp = open('./twitter-api-credentials.json')
 credentials = json.load(json_fp)
-followedUserIds = '813286'
+followedUserIds = []
 
 #Add new users
 followedUserIds.append('813286')
