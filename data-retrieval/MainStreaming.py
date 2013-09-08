@@ -13,6 +13,8 @@ followedUserIds = []
 for row in reader:
    followedUserIds.append(row[1])
 
+persister = PersistencyLayer.TweetsPersister()
+
 class MainStreamingListener(StreamListener):
    """ A listener handles tweets are the received from the stream.
    This is a basic listener that just prints received tweets to stdout.
@@ -21,11 +23,10 @@ class MainStreamingListener(StreamListener):
 
    def on_data(self, data):
       parsed = json.loads(data)
-      print data
 
       # we are only interested on user's tweets or direct retweets
       if ('user' in parsed and parsed['user']['id_str'] in followedUserIds) or ('retweeted_status' in parsed and parsed['retweeted_status']['user']['id_str'] in followedUserIds):
-         print data
+         persister.insertRawTweet(data)
 
       return True
 
@@ -39,5 +40,4 @@ if __name__ == '__main__':
    auth.set_access_token(credentials['access_token_key'], credentials['access_token_secret'])
 
    stream = Stream(auth, l)
-   #stream.filter(follow='813286')
-   stream.filter(follow=','.join(followedUserIds))
+   stream.filter(follow=[','.join(followedUserIds)])
