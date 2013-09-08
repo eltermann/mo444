@@ -10,20 +10,20 @@ followedUserIds = []
 #Add new users
 followedUserIds.append('813286')
 
+
+def stringify(list):
+   strx =""
+   for i in list:
+      strx += str(i) + ",";
+   strx = strx[:-1]; #cut the last "," sign
+   return strx;
+
 class StdOutListener(StreamListener):
    """ A listener handles tweets are the received from the stream.
    This is a basic listener that just prints received tweets to stdout.
 
    """
 
-def stringify(list):
-    strx =""
-    for i in list:
-       strx += str(i) + ",";
-    strx = strx[:-1]; #cut the last "," sign
-    return strx;    
-   
-   
    def on_data(self, data):
       parsed = json.loads(data)
 
