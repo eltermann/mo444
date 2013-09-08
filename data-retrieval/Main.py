@@ -9,4 +9,4 @@ api = twitter.Api(consumer_key=data['consumer_key'], consumer_secret=data['consu
 db = PersistentLayer.Persister()
 
 fetcher = TweetFetcher.Fetcher(api, db)
-fetcher.fetchTweetRecursive("367730841008340993")
+fetcher.fetchTweetRecursive("374623252179472385")
