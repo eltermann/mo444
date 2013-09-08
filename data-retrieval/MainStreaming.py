@@ -5,18 +5,30 @@ from tweepy import Stream
 
 json_fp = open('./twitter-api-credentials.json')
 credentials = json.load(json_fp)
-followedUserId = '813286'
+followedUserIds = '813286'
+
+#Add new users
+followedUserIds.append('813286')
 
 class StdOutListener(StreamListener):
    """ A listener handles tweets are the received from the stream.
    This is a basic listener that just prints received tweets to stdout.
 
    """
+
+def stringify(list):
+    strx =""
+    for i in list:
+       strx += str(i) + ",";
+    strx = strx[:-1]; #cut the last "," sign
+    return strx;    
+   
+   
    def on_data(self, data):
       parsed = json.loads(data)
 
       # we are only interested on user's tweets or direct retweets
-      if parsed['user']['id_str'] == followedUserId or ('retweeted_status' in parsed and parsed['retweeted_status']['user']['id_str'] == followedUserId):
+      if (parsed['user']['id_str'] in followedUserIds) or ('retweeted_status' in parsed and parsed['retweeted_status']['user']['id_str'] in followedUserIds):
          print data
 
       return True
@@ -30,4 +42,4 @@ if __name__ == '__main__':
    auth.set_access_token(credentials['access_token_key'], credentials['access_token_secret'])
 
    stream = Stream(auth, l)
-   stream.filter(follow=[followedUserId])
+   stream.filter(follow=stringify(followedUserIds))
