@@ -23,7 +23,10 @@ DROP TABLE IF EXISTS `raw_tweets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `raw_tweets` (
-  `tweet` text
+  `tweet` text,
+  `raw_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`raw_id`),
+  UNIQUE KEY `raw_id` (`raw_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
