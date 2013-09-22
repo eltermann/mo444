@@ -1,14 +1,16 @@
 import csv
 import json
+import os
 import PersistencyLayer
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 from tweepy import Stream
 
-json_fp = open('./twitter-api-credentials.json')
+basepath = os.path.dirname(os.path.realpath(__file__))
+json_fp = open(basepath + '/twitter-api-credentials.json')
 credentials = json.load(json_fp)
 
-reader = csv.reader(open("followed_user_ids.csv", "rb"))
+reader = csv.reader(open(basepath + "/followed_user_ids.csv", "rb"))
 followedUserIds = []
 for row in reader:
    followedUserIds.append(row[1])
@@ -26,6 +28,7 @@ class MainStreamingListener(StreamListener):
 
       # we are only interested on user's tweets or direct retweets
       if ('user' in parsed and parsed['user']['id_str'] in followedUserIds) or ('retweeted_status' in parsed and parsed['retweeted_status']['user']['id_str'] in followedUserIds):
+         print "tweetid: %d" % parsed['id']
          persister.insertRawTweet(data)
 
       return True
