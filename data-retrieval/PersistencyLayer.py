@@ -15,5 +15,5 @@ class TweetsPersister():
 
    def insertRawTweet(self, string):
       c = self.db_raw.cursor()
-      c.execute("INSERT INTO raw_tweets VALUES (%s)", string)
+      c.execute("INSERT INTO raw_tweets (tweet) VALUES (%s)", string)
       self.db_raw.commit()
