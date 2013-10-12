@@ -39,7 +39,7 @@ CREATE TABLE `tweet` (
   `tweet_lang` varchar(8) DEFAULT NULL,
   `tweet_retweeted_status_id` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`tweet_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -64,7 +64,7 @@ CREATE TABLE `tweet_hashtag` (
   `hashtag_text` varchar(140) DEFAULT NULL,
   `hashtag_indices` varchar(128) DEFAULT NULL,
   PRIMARY KEY (`tweet_hashtag_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -91,7 +91,7 @@ CREATE TABLE `tweet_url` (
   `tweet_url_expanded_url` varchar(128) DEFAULT NULL,
   `tweet_url_indices` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`tweet_url_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -118,7 +118,7 @@ CREATE TABLE `tweet_usermention` (
   `user_name` varchar(256) DEFAULT NULL,
   `tweet_usermention_indices` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`tweet_usermention_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -157,7 +157,7 @@ CREATE TABLE `user` (
   `user_lang` varchar(10) DEFAULT NULL,
   `user_contributors_enabled` smallint(6) DEFAULT NULL,
   PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
