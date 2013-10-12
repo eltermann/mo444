@@ -74,6 +74,8 @@ class TweetsPersister():
 
    def saveTweet(self, tweet):
       # TODO
+      return
 
    def saveUser(self, user):
       # TODO
+      return
