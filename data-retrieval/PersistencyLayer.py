@@ -15,7 +15,8 @@ class TweetsPersister():
       self.db = MySQLdb.connect(host = credentials['structured-tweets']['host'],
                                 db = credentials['structured-tweets']['db'],
                                 user = credentials['structured-tweets']['user'],
-                                passwd = credentials['structured-tweets']['passwd'])
+                                passwd = credentials['structured-tweets']['passwd'],
+                                charset = 'utf8')
 
 
    def insertRawTweet(self, string):
@@ -107,9 +108,42 @@ class TweetsPersister():
             (1 if tweet['retweeted'] else 0),
             (1 if ('possibly_sensitive' in tweet and tweet['possibly_sensitive']) else 0),
             tweet['lang'],
-            (1 if ('retweeted_status_id' in tweet and tweet['retweeted_status_id']) else 0)
+            (tweet['retweeted_status']['id'] if 'retweeted_status' in tweet else 0)
          )
          c.execute("INSERT INTO tweet (tweet_id, tweet_text, tweet_source, tweet_truncated, tweet_in_reply_to_status_id, tweet_in_reply_to_user_id, tweet_in_reply_to_screen_name, user_id, tweet_retweet_count, tweet_favorite_count, tweet_favorited, tweet_retweeted, tweet_possibly_sensitive, tweet_lang, tweet_retweeted_status_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", data)
+
+         if 'entities' in tweet:
+            if 'urls' in tweet['entities']:
+               for url in tweet['entities']['urls']:
+                  url_data = (
+                     tweet['id'],
+                     url['url'],
+                     url['display_url'],
+                     url['expanded_url'],
+                     '%d;%d' % (url['indices'][0], url['indices'][1])
+                  )
+                  c.execute("INSERT INTO tweet_url (tweet_id, tweet_url_url, tweet_url_display_url, tweet_url_expanded_url, tweet_url_indices) VALUES (%s, %s, %s, %s, %s)", url_data)
+
+            if 'user_mentions' in tweet['entities']:
+               for user_mention in tweet['entities']['user_mentions']:
+                  user_mention_data = (
+                     tweet['id'],
+                     user_mention['id'],
+                     user_mention['screen_name'],
+                     user_mention['name'],
+                     '%d;%d' % (user_mention['indices'][0], user_mention['indices'][1])
+                  )
+                  c.execute("INSERT INTO tweet_usermention (tweet_id, user_id, user_screen_name, user_name, tweet_usermention_indices) VALUES (%s, %s, %s, %s, %s)", user_mention_data)
+
+            if 'hashtags' in tweet['entities']:
+               for hashtag in tweet['entities']['hashtags']:
+                  hashtag_data = (
+                     tweet['id'],
+                     hashtag['text'],
+                     '%d;%d' % (hashtag['indices'][0], hashtag['indices'][1])
+                  )
+                  c.execute("INSERT INTO tweet_hashtag (tweet_id, hashtag_text, hashtag_indices) VALUES (%s, %s, %s)", hashtag_data)
+
          self.db.commit()
       return
 
@@ -121,7 +155,6 @@ class TweetsPersister():
       else:
          # create user
          c = self.db.cursor()
-         print user['name']
          data = (
             user['id'],
             user['name'],

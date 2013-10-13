@@ -13,7 +13,8 @@ for offset in range(0, 99999999, step):
    row = c1.fetchone()
    while not row is None:
       print "raw_id: %s" % row[0]
-      data = json.loads(row[1].decode('iso-8859-1').encode('utf8'))
+      #data = json.loads(row[1].decode('iso-8859-1').encode('utf8'))
+      data = json.loads(row[1].decode('iso-8859-1'))
       if 'retweeted_status' in data and 'id' in data['retweeted_status']:
          # save retweeted status
          persister.saveTweet(data['retweeted_status'])
