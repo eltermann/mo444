@@ -178,3 +178,13 @@ class TweetsPersister():
          c.execute("INSERT INTO user (user_id, user_name, user_screen_name, user_location, user_description, user_url, user_followers_count, user_friends_count, user_listed_count, user_created_at, user_favourites_count, user_utc_offset, user_time_zone, user_geo_enabled, user_verified, user_statuses_count, user_lang, user_contributors_enabled) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", data)
          self.db.commit()
       return
+
+   def updateTweetCreatedAt(self, tweet):
+      c = self.db.cursor()
+      data = (
+         tweet['created_at'],
+         tweet['id']
+      )
+      c.execute("UPDATE tweet SET tweet_created_at = %s WHERE tweet_id = %s", data)
+      self.db.commit()
+      return

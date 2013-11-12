@@ -3,7 +3,7 @@ import PersistencyLayer
 
 persister = PersistencyLayer.TweetsPersister()
 
-last_raw_id = 0
+last_raw_id = 12699999
 step = 100000
 
 c1 = persister.db_raw.cursor()
