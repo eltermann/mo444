@@ -67,7 +67,7 @@ mo444LinearRegression <- function() {
   J.validation <- mean((estimated.results.validation.un - observation.data.validation.un)^2)
 
   ret <- list()
-  #ret[['trained.params']] <- trained.params
+  ret[['trained.params']] <- trained.params
   ret[['observation.data.train']] <- observation.data.train.un
   ret[['estimated.results.train']] <- estimated.results.train.un
   ret[['J.train']] <- J.train
@@ -87,7 +87,7 @@ times <<- c(
   1*60*60, 1.5*60*60, 2*60*60, 3*60*60, 4*60*60, 5*60*60, 6*60*60, 10*60*60 # 1 to 10 hours
 )
 
-#followed.users <- read.csv('./followed_user_ids.csv', header=FALSE)
+#followed.users <- read.csv('/home/felipe/2s2013/mo444/mo444/analysis/followed_user_ids.csv', header=FALSE)
 #for (u in 1:nrow(followed.users)) {
 
   #user.name <- as.character(followed.users[u,'V1'])
@@ -96,26 +96,31 @@ times <<- c(
 
   #print(paste(user.name, user.id, sep=': '))
 
-  #q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id FROM tweet_with_created_at2 t WHERE t.user_id = %s AND t.tweet_created_at > 1379827567;", user.id))
-  #q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id FROM tweet_with_created_at2 t WHERE t.tweet_created_at > 1379827567;"))
-  q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id FROM tweet_with_created_at2 t WHERE t.user_id IN (27260086,21447363,14230524,813286,17919972,10228272,16409683,79293791,180505807,26565946,101402940,783214,85603854,44409004,15846407,155659213,19397785,28706024,25365536,21111883,184910040,1311017701,35787166,100220864,60865434,23375688,35094637,181561712,22940219,209708391,19058681,105119490,815322103,31927467,268414482,116362700,19248106,428333,73992972,119509520,85426644,158314798,84279963,1311017701,50393960,23976386,27195114,24929621,31239408,2425151,52551600,20322929,16190898,18863815,218571680,3004231,21425125,18091904,53153263,176566242,43152482,259379883,759251) AND t.tweet_created_at > 1379827567;"))
-  if (!'tweet_id' %in% names(q0) || length(q0[['tweet_id']]) < 50) {
+  #q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id FROM tweet_with_created_at2 t WHERE t.user_id = %s AND t.tweet_created_at > 1379827567 AND t.tweet_created_at < 1379937600;", user.id))
+  print('fetching tweets...')
+  q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id FROM tweet_with_created_at2 t WHERE t.user_id IN (27260086,21447363,14230524,813286,17919972,10228272,16409683,79293791,180505807,26565946,101402940,783214,85603854,44409004,15846407,155659213,19397785,28706024,25365536,21111883,184910040,1311017701,35787166,100220864,60865434,23375688,35094637,181561712,22940219,209708391,19058681,105119490,815322103,31927467,268414482,116362700,19248106,428333,73992972,119509520,85426644,158314798,84279963,1311017701,50393960,23976386,27195114,24929621,31239408,2425151,52551600,20322929,16190898,18863815,218571680,3004231,21425125,18091904,53153263,176566242,43152482,259379883,759251) AND t.tweet_created_at > 1379827567 AND t.tweet_created_at < 1379937600;"))
+  if (!'tweet_id' %in% names(q0)) {
     print('not enough tweets')
-#   next
+    next
   }
   user_tweets <- q0[['tweet_id']]
 
-  feature.vectors <<- matrix(0, nrow=length(user_tweets), ncol=length(times))
+  feature.vectors <<- matrix(0, nrow=length(user_tweets), ncol=4*length(times))
   observation.data <<- array(0, dim=length(user_tweets))
   tweet_counter <- 1
+  print('fetching retweets history...')
   for (tweet_id in as.character(user_tweets)) {
-    q <- dbGetQuery(con, sprintf("SELECT * FROM retweets_history2 WHERE original_tweet_id = %s;", tweet_id))
+    q <- dbGetQuery(con, sprintf("SELECT * FROM retweets_history4 WHERE original_tweet_id = %s;", tweet_id))
     q2 <- dbGetQuery(con, sprintf("SELECT t.tweet_text, u.user_screen_name FROM tweet t INNER JOIN user u ON t.user_id = u.user_id where t.tweet_id = %s;", tweet_id))
 
     if ('elapsed_time' %in% names(q) && length(q[['elapsed_time']]) > 0) {
       observation.data[tweet_counter] <- length(q[['elapsed_time']])
-      feature.vector <- mo444GetFeatureVector(q[['elapsed_time']], q[['count']])
-      feature.vectors[tweet_counter,] <- feature.vector
+      feature.vectors[tweet_counter,] <- c(
+         mo444GetFeatureVector(q[['elapsed_time']], q[['count']]),
+         mo444GetFeatureVector(q[['elapsed_time']], q[['reached_followers_count']]),
+         mo444GetFeatureVector(q[['elapsed_time']], q[['reached_friends_count']]),
+         mo444GetFeatureVector(q[['elapsed_time']], q[['reached_favorited_count']])
+      )
       tweet_counter <- tweet_counter + 1
     }
   }
