@@ -98,7 +98,7 @@ times <<- c(
 
   #q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id FROM tweet_with_created_at2 t WHERE t.user_id = %s AND t.tweet_created_at > 1379827567 AND t.tweet_created_at < 1379937600;", user.id))
   print('fetching tweets...')
-  q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id FROM tweet_with_created_at2 t WHERE t.user_id IN (27260086,21447363,14230524,813286,17919972,10228272,16409683,79293791,180505807,26565946,101402940,783214,85603854,44409004,15846407,155659213,19397785,28706024,25365536,21111883,184910040,1311017701,35787166,100220864,60865434,23375688,35094637,181561712,22940219,209708391,19058681,105119490,815322103,31927467,268414482,116362700,19248106,428333,73992972,119509520,85426644,158314798,84279963,1311017701,50393960,23976386,27195114,24929621,31239408,2425151,52551600,20322929,16190898,18863815,218571680,3004231,21425125,18091904,53153263,176566242,43152482,259379883,759251) AND t.tweet_created_at > 1379827567 AND t.tweet_created_at < 1379937600;"))
+  q0 <- dbGetQuery(con, sprintf("SELECT t.tweet_id, FROM_UNIXTIME(t.tweet_created_at, '%%w;%%H') AS week_and_hour FROM tweet_with_created_at2 t WHERE t.user_id IN (27260086,21447363,14230524,813286,17919972,10228272,16409683,79293791,180505807,26565946,101402940,783214,85603854,44409004,15846407,155659213,19397785,28706024,25365536,21111883,184910040,1311017701,35787166,100220864,60865434,23375688,35094637,181561712,22940219,209708391,19058681,105119490,815322103,31927467,268414482,116362700,19248106,428333,73992972,119509520,85426644,158314798,84279963,1311017701,50393960,23976386,27195114,24929621,31239408,2425151,52551600,20322929,16190898,18863815,218571680,3004231,21425125,18091904,53153263,176566242,43152482,259379883,759251) AND t.tweet_created_at > 1379827567 AND t.tweet_created_at < 1379937600;"))
   if (!'tweet_id' %in% names(q0)) {
     print('not enough tweets')
     next
@@ -106,10 +106,14 @@ times <<- c(
   user_tweets <- q0[['tweet_id']]
 
   feature.vectors <<- matrix(0, nrow=length(user_tweets), ncol=4*length(times))
+  categoric.feature.vectors <<- matrix(0, nrow=length(user_tweets), ncol=2)
   observation.data <<- array(0, dim=length(user_tweets))
   tweet_counter <- 1
   print('fetching retweets history...')
-  for (tweet_id in as.character(user_tweets)) {
+  for (tweet_index in 1:length(user_tweets)) {
+    tweet_id <- as.character(q0[tweet_index,'tweet_id'])
+    tweet_week <- substr(q0[tweet_index,'week_and_hour'], 1, 1)
+    tweet_hour <- substr(q0[tweet_index,'week_and_hour'], 3, 4)
     q <- dbGetQuery(con, sprintf("SELECT * FROM retweets_history4 WHERE original_tweet_id = %s;", tweet_id))
     q2 <- dbGetQuery(con, sprintf("SELECT t.tweet_text, u.user_screen_name FROM tweet t INNER JOIN user u ON t.user_id = u.user_id where t.tweet_id = %s;", tweet_id))
 
@@ -121,11 +125,13 @@ times <<- c(
          mo444GetFeatureVector(q[['elapsed_time']], q[['reached_friends_count']]),
          mo444GetFeatureVector(q[['elapsed_time']], q[['reached_favorited_count']])
       )
+      categoric.feature.vectors[tweet_counter,] <- c(tweet_week, tweet_hour)
       tweet_counter <- tweet_counter + 1
     }
   }
   num.tweets <- tweet_counter - 1
   feature.vectors <<- feature.vectors[1:num.tweets,]
+  categoric.feature.vectors <<- categoric.feature.vectors[1:num.tweets,]
 
   if (!is.matrix(feature.vectors) || nrow(feature.vectors) <= 1) {
     print('no tweets found.')
