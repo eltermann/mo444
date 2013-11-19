@@ -56,7 +56,7 @@ class TweetsPersister():
       @return Populated user dictionary, if found. "None" otherwise.
       """
       c = self.db.cursor()
-      c.execute("SELECT user_name, user_screen_name, user_location, user_description, user_url, user_followers_count, user_friends_count FROM user WHERE user_id = %s", user_id)
+      c.execute("SELECT user_name, user_screen_name, user_location, user_description, user_url, user_followers_count, user_friends_count, user_favourites_count FROM user WHERE user_id = %s", user_id)
       row = c.fetchone()
       if row is None:
          return None
@@ -70,6 +70,7 @@ class TweetsPersister():
          'url': row[4],
          'followers_count': row[5],
          'friends_count': row[6],
+         'favorited_count': row[7],
       }
 
       return user
