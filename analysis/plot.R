@@ -105,7 +105,7 @@ times <<- c(
   }
   user_tweets <- q0[['tweet_id']]
 
-  feature.vectors <<- matrix(0, nrow=length(user_tweets), ncol=4*length(times))
+  feature.vectors <<- matrix(0, nrow=length(user_tweets), ncol=2*length(times))
   categoric.feature.vectors <<- matrix(0, nrow=length(user_tweets), ncol=2)
   observation.data <<- array(0, dim=length(user_tweets))
   tweet_counter <- 1
@@ -114,16 +114,14 @@ times <<- c(
     tweet_id <- as.character(q0[tweet_index,'tweet_id'])
     tweet_week <- substr(q0[tweet_index,'week_and_hour'], 1, 1)
     tweet_hour <- substr(q0[tweet_index,'week_and_hour'], 3, 4)
-    q <- dbGetQuery(con, sprintf("SELECT * FROM retweets_history4 WHERE original_tweet_id = %s;", tweet_id))
+    q <- dbGetQuery(con, sprintf("SELECT * FROM retweets_history4 WHERE original_tweet_id = %s AND elapsed_time < 86400;", tweet_id))
     q2 <- dbGetQuery(con, sprintf("SELECT t.tweet_text, u.user_screen_name FROM tweet t INNER JOIN user u ON t.user_id = u.user_id where t.tweet_id = %s;", tweet_id))
 
     if ('elapsed_time' %in% names(q) && length(q[['elapsed_time']]) > 0) {
       observation.data[tweet_counter] <- length(q[['elapsed_time']])
       feature.vectors[tweet_counter,] <- c(
          mo444GetFeatureVector(q[['elapsed_time']], q[['count']]),
-         mo444GetFeatureVector(q[['elapsed_time']], q[['reached_followers_count']]),
-         mo444GetFeatureVector(q[['elapsed_time']], q[['reached_friends_count']]),
-         mo444GetFeatureVector(q[['elapsed_time']], q[['reached_favorited_count']])
+         mo444GetFeatureVector(q[['elapsed_time']], q[['reached_followers_count']])
       )
       categoric.feature.vectors[tweet_counter,] <- c(tweet_week, tweet_hour)
       tweet_counter <- tweet_counter + 1
