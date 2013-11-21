@@ -41,17 +41,12 @@ mo444LinearRegression <- function() {
 mo444DecisionTree <- function() {
   library('rpart')
   
-  num.tweets <- nrow(feature.vectors)
-  
-  train.size <- floor(0.8 * num.tweets)
-
-  feature.vectors.df <- rand.data[,2:71] # exclude post.id column
-  feature.vectors.train <- feature.vectors.df[1:train.size,,drop=F]
-  feature.vectors.validation <- feature.vectors.df[(train.size+1):num.tweets,,drop=F]
+  feature.vectors.train <- data.frame.norm[1:train.size,,drop=F]
+  feature.vectors.validation <- data.frame.norm[(train.size+1):num.tweets,,drop=F]
     
   # Build decision tree and make predictions
   control <- rpart.control(xval=10, minsplit=4, minbucket=2, cp=0)
-  fit <- rpart(observed.result~retweets10sec+retweets20sec+retweets30sec+retweets40sec+retweets50sec+retweets60sec+retweets90sec+retweets02min+retweets03min+retweets04min+retweets05min+followers10sec+followers20sec+followers30sec+followers40sec+followers50sec+followers60sec+followers90sec+followers02min+followers03min+followers04min+followers05min+week.sunday+week.monday+week.tuesday+week.wednesday+week.thursday+week.friday+week.saturday+hour.0to4+hour.4to8+hour.8to12+hour.12to16+hour.16to20+hour.20to24, data=feature.vectors.train, method='anova', control=control)
+  fit <- rpart(observation.data~retweets10sec+retweets20sec+retweets30sec+retweets40sec+retweets50sec+retweets60sec+retweets90sec+retweets02min+retweets03min+retweets04min+retweets05min+followers10sec+followers20sec+followers30sec+followers40sec+followers50sec+followers60sec+followers90sec+followers02min+followers03min+followers04min+followers05min+week.sunday+week.monday+week.tuesday+week.wednesday+week.thursday+week.friday+week.saturday+hour.0to4+hour.4to8+hour.8to12+hour.12to16+hour.16to20+hour.20to24, data=feature.vectors.train, method='anova', control=control)
   #plot(fit, uniform=T)
   #text(fit, use.n = TRUE, cex = 0.75)
 
@@ -77,11 +72,21 @@ mo444DecisionTree <- function() {
   return(ret)
 }
 
-
+load("/home/felipe/2s2013/mo444/mo444/analysis/data.Rdata")
 # Build feature.vectors
-rand.data <- data[sample(41514),]
-feature.vectors <- data.matrix(rand.data[,2:70])
-observation.data <- rand.data[,'observed.result']
+rand.data <<- data[sample(41514),]
+feature.vectors <<- data.matrix(rand.data[,2:70])
+observation.data <<- rand.data[,'observed.result']
+
+# Normalization
+num.tweets <<- nrow(feature.vectors)
+train.size <<- floor(0.8 * num.tweets)
+means.train <<- apply(feature.vectors[1:train.size,],2,mean)
+sds.train <<- apply(feature.vectors[1:train.size,], 2, sd)
+feature.vectors.norm <<- t(apply(feature.vectors, 1, function(x) { x-means.train })) # subtract each feature value by feature mean
+feature.vectors.norm <<- t(apply(feature.vectors.norm, 1, function(x) { x/sds.train }))  # divide each row by its standard deviation
+feature.vectors.norm <<- cbind(feature.vectors.norm, 1) # add bias
+data.frame.norm <<- data.frame(feature.vectors.norm, observation.data)
 
 # Execute analysis
 #regression.results <- mo444LinearRegression()
