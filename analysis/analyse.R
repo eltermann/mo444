@@ -6,29 +6,25 @@
 #sd is standard deviation
 mo444LinearRegression <- function(use.grouped=FALSE) {
   library('MASS')
-  num.tweets <- nrow(feature.vectors)
-  
-  #TODO - select random subset for training
-  train.size <- floor(0.8 * num.tweets)
 
   if (use.grouped) {
-    feature.vectors.train <- feature.vectors.grouped[1:train.size.grouped,,drop=F]
-    feature.vectors.validation <- feature.vectors.grouped[(train.size.grouped+1):num.tweets.grouped,,drop=F]
+    feature.vectors.train <- feature.vectors.norm.grouped[1:train.size.grouped,,drop=F]
+    feature.vectors.validation <- feature.vectors.norm.grouped[(train.size.grouped+1):num.tweets.grouped,,drop=F]
     observation.data.train <- observation.data.grouped[1:train.size.grouped]
     observation.data.validation <- observation.data.grouped[(train.size.grouped+1):num.tweets.grouped]
   }
   else {
-    feature.vectors.train <- feature.vectors[1:train.size,,drop=F]
-    feature.vectors.validation <- feature.vectors[(train.size+1):num.tweets,,drop=F]
+    feature.vectors.train <- feature.vectors.norm[1:train.size,,drop=F]
+    feature.vectors.validation <- feature.vectors.norm[(train.size+1):num.tweets,,drop=F]
     observation.data.train <- observation.data[1:train.size]
     observation.data.validation <- observation.data[(train.size+1):num.tweets]
   }
-  
+
   #theta - parameters
   trained.params <- ginv(feature.vectors.train) %*% observation.data.train
   estimated.results.train <- as.vector(feature.vectors.train %*% trained.params)
   estimated.results.validation <- as.vector(feature.vectors.validation %*% trained.params)
-  
+
   # calculate errors
   J.train <- mean((estimated.results.train - observation.data.train)^2)
   J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
@@ -45,24 +41,68 @@ mo444LinearRegression <- function(use.grouped=FALSE) {
   return(ret)
 }
 
-mo444DecisionTree <- function() {
+mo444DecisionTree <- function(use.grouped=FALSE) {
   library('rpart')
-  
-  feature.vectors.train <- data.frame.norm[1:train.size,,drop=F]
-  feature.vectors.validation <- data.frame.norm[(train.size+1):num.tweets,,drop=F]
+
+  if (use.grouped) {
+    feature.vectors.train <- data.frame.norm.grouped[1:train.size.grouped,,drop=F]
+    feature.vectors.validation <- data.frame.norm.grouped[(train.size.grouped+1):num.tweets.grouped,,drop=F]
+    observation.data.train <- observation.data.grouped[1:train.size.grouped]
+    observation.data.validation <- observation.data.grouped[(train.size.grouped+1):num.tweets.grouped]
+  }
+  else {
+    feature.vectors.train <- data.frame.norm[1:train.size,,drop=F]
+    feature.vectors.validation <- data.frame.norm[(train.size+1):num.tweets,,drop=F]
+    observation.data.train <- observation.data[1:train.size]
+    observation.data.validation <- observation.data[(train.size+1):num.tweets]
+  }
     
   # Build decision tree and make predictions
   control <- rpart.control(xval=10, minsplit=4, minbucket=2, cp=0)
-  fit <- rpart(observation.data~retweets10sec+retweets20sec+retweets30sec+retweets40sec+retweets50sec+retweets60sec+retweets90sec+retweets02min+retweets03min+retweets04min+retweets05min+followers10sec+followers20sec+followers30sec+followers40sec+followers50sec+followers60sec+followers90sec+followers02min+followers03min+followers04min+followers05min+week.sunday+week.monday+week.tuesday+week.wednesday+week.thursday+week.friday+week.saturday+hour.0to4+hour.4to8+hour.8to12+hour.12to16+hour.16to20+hour.20to24, data=feature.vectors.train, method='anova', control=control)
+  fit <- rpart(observation.data~retweets10sec+retweets20sec+retweets30sec+retweets40sec+retweets50sec+retweets60sec+retweets90sec+retweets02min+retweets03min+retweets04min+retweets05min+followers10sec+followers20sec+followers30sec+followers40sec+followers50sec+followers60sec+followers90sec+followers02min+followers03min+followers04min+followers05min+week.sunday+week.monday+week.tuesday+week.wednesday+week.thursday+week.friday+week.saturday+hour.0to4+hour.4to8+hour.8to12+hour.12to16+hour.16to20+hour.20to24, data=feature.vectors.train,observation.data.train, method='anova', control=control)
   #plot(fit, uniform=T)
   #text(fit, use.n = TRUE, cex = 0.75)
 
   estimated.results.train <- as.vector(predict(fit, newdata=feature.vectors.train))
   estimated.results.validation <- as.vector(predict(fit, newdata=feature.vectors.validation))
 
-  observation.data.train <- observation.data[1:train.size]
-  observation.data.validation <- observation.data[(train.size+1):num.tweets]
+  # calculate error
+  J.train <- mean((estimated.results.train - observation.data.train)^2)
+  J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
+  
+  ret <- list()
+  ret[['fit']] <- fit
+  ret[['observation.data.train']] <- observation.data.train
+  ret[['estimated.results.train']] <- estimated.results.train
+  ret[['J.train']] <- J.train
+  ret[['observation.data.validation']] <- observation.data.validation
+  ret[['estimated.results.validation']] <- estimated.results.validation
+  ret[['J.validation']] <- J.validation
+  
+  return(ret)
+}
 
+mo444SVM <- function(use.grouped=FALSE) {
+  library('e1071')
+  
+  if (use.grouped) {
+    feature.vectors.train <- feature.vectors.norm.grouped[1:train.size.grouped,,drop=F]
+    feature.vectors.validation <- feature.vectors.norm.grouped[(train.size.grouped+1):num.tweets.grouped,,drop=F]
+    observation.data.train <- observation.data.grouped[1:train.size.grouped]
+    observation.data.validation <- observation.data.grouped[(train.size.grouped+1):num.tweets.grouped]
+  }
+  else {
+    feature.vectors.train <- feature.vectors.norm[1:train.size,,drop=F]
+    feature.vectors.validation <- feature.vectors.norm[(train.size+1):num.tweets,,drop=F]
+    observation.data.train <- observation.data[1:train.size]
+    observation.data.validation <- observation.data[(train.size+1):num.tweets]
+  }
+
+  # perform fit
+  fit <- svm(x=feature.vectors.train, y=observation.data.train, type="eps-regression", decision.values=TRUE)
+  estimated.results.train <- as.vector(predict(fit, newdata=feature.vectors.train))
+  estimated.results.validation <- as.vector(predict(fit, newdata=feature.vectors.validation))
+  
   # calculate error
   J.train <- mean((estimated.results.train - observation.data.train)^2)
   J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
@@ -104,7 +144,14 @@ data.frame.norm <<- data.frame(feature.vectors.norm, observation.data)
 
 num.tweets.grouped <<- nrow(feature.vectors.grouped)
 train.size.grouped <<- floor(0.8 * num.tweets.grouped)
+means.train.grouped <<- apply(feature.vectors.grouped[1:train.size.grouped,],2,mean)
+sds.train.grouped <<- apply(feature.vectors.grouped[1:train.size.grouped,], 2, sd)
+feature.vectors.norm.grouped <<- t(apply(feature.vectors.grouped, 1, function(x) { x-means.train.grouped })) # subtract each feature value by feature mean
+feature.vectors.norm.grouped <<- t(apply(feature.vectors.norm.grouped, 1, function(x) { x/sds.train.grouped }))  # divide each row by its standard deviation
+feature.vectors.norm.grouped <<- cbind(feature.vectors.norm.grouped, 1) # add bias
+data.frame.norm.grouped <<- data.frame(feature.vectors.norm.grouped, observation.data.grouped)
 
 # Execute analysis
-regression.results <- mo444LinearRegression(use.grouped=T)
-#decision.tree.results <- mo444DecisionTree()
+#regression.results <- mo444LinearRegression(use.grouped=F)
+#decision.tree.results <- mo444DecisionTree(use.grouped=F)
+svm.results <- mo444SVM(use.grouped=F)
