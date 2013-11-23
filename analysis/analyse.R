@@ -4,7 +4,7 @@
 #mean.y and sd.y are related to the normalization of observation.
 #mean is mean
 #sd is standard deviation
-mo444LinearRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.stamps=28) {
+mo444LinearRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.stamps.from=1, time.stamps.to=28) {
   library('MASS')
 
   if (use.grouped) {
@@ -16,7 +16,7 @@ mo444LinearRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.
     local.observation.data <- observation.data
   }
   indexes <- which(local.observation.data > min.retweets.count)
-  local.feature.vectors <- local.feature.vectors[indexes,c(1:time.stamps, 29:(28+time.stamps), 57:70)]
+  local.feature.vectors <- local.feature.vectors[indexes,c(time.stamps.from:time.stamps.to, (28+time.stamps.from):(28+time.stamps.to), 57:70)]
   local.observation.data <- local.observation.data[indexes]
 
   local.num.tweets <- length(local.observation.data)
@@ -35,12 +35,73 @@ mo444LinearRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.
   # calculate errors
   J.train <- mean((estimated.results.train - observation.data.train)^2)
   J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
-  
+  minmax.train <- data.frame(min=0.9*observation.data.train, max=1.1*observation.data.train)
+  minmax.validation <- data.frame(min=0.9*observation.data.validation, max=1.1*observation.data.validation)
+  hit.rate.train <- sapply(1:length(estimated.results.train), function(x) {
+    return(ifelse(estimated.results.train[x]>=minmax.train[x, 'min'] && estimated.results.train[x]<=minmax.train[x, 'max'], 1, 0))
+  })
+  hit.rate.train <- mean(hit.rate.train)
+  hit.rate.validation <- sapply(1:length(estimated.results.validation), function(x) {
+    return(ifelse(estimated.results.validation[x]>=minmax.validation[x, 'min'] && estimated.results.validation[x]<=minmax.validation[x, 'max'], 1, 0))
+  })
+  hit.rate.validation <- mean(hit.rate.validation)
+
   ret <- list()
   ret[['trained.params']] <- trained.params
   ret[['observation.data.train']] <- observation.data.train
   ret[['estimated.results.train']] <- estimated.results.train
   ret[['J.train']] <- J.train
+  ret[['observation.data.validation']] <- observation.data.validation
+  ret[['estimated.results.validation']] <- estimated.results.validation
+  ret[['J.validation']] <- J.validation
+  ret[['hit.rate.train']] <- hit.rate.train
+  ret[['hit.rate.validation']] <- hit.rate.validation
+
+  return(ret)
+}
+
+mo444EuclidianDistanceToKMeans <- function(use.grouped=FALSE, time.stamps=28) {
+  if (use.grouped) {
+    local.feature.vectors <- feature.vectors.norm.grouped
+    local.observation.data <- observation.data.grouped
+  }
+  else {
+    local.feature.vectors <- feature.vectors.norm
+    local.observation.data <- observation.data
+  }
+  indexes <- which(local.observation.data > min.retweets.count)
+
+  local.feature.vectors <- local.feature.vectors[indexes,c(1:time.stamps, 29:(28+time.stamps), 57:70)]
+  local.observation.data <- local.observation.data[indexes]
+  
+  local.num.tweets <- length(local.observation.data)
+  local.train.size <- 0.8 * local.num.tweets
+
+  feature.vectors.train <- local.feature.vectors[1:local.train.size,]
+  feature.vectors.validation <- local.feature.vectors[(local.train.size+1):local.num.tweets,]
+  observation.data.train <- local.observation.data[1:local.train.size]
+  observation.data.validation <- local.observation.data[(local.train.size+1):local.num.tweets]
+
+  num.clusters <- ifelse(use.grouped, 50, 500)
+  km <- kmeans(feature.vectors.train, centers=num.clusters, iter.max=500)
+  km.retweets.means <- sapply(1:num.clusters, function(x) {
+    return(mean(observation.data.train[which(km$cluster == x)]))
+  })
+  estimated.results.validation <- apply(feature.vectors.validation, 1, function(validation.feature.vector) {
+    distances <- apply(km$centers, 1, function(centroid) {
+      return(sqrt(sum((validation.feature.vector - centroid)^2)))
+    })
+    min.index <- which.min(distances)
+    return(km.retweets.means[min.index])
+  })
+
+  # calculate errors
+  J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
+
+  ret <- list()
+  ret[['observation.data.train']] <- observation.data.train
+  #ret[['estimated.results.train']] <- estimated.results.train
+  #ret[['J.train']] <- J.train
   ret[['observation.data.validation']] <- observation.data.validation
   ret[['estimated.results.validation']] <- estimated.results.validation
   ret[['J.validation']] <- J.validation
@@ -121,11 +182,11 @@ mo444SVM <- function(use.grouped=FALSE) {
   fit <- svm(x=feature.vectors.train, y=observation.data.train, type="eps-regression", decision.values=TRUE)
   estimated.results.train <- as.vector(predict(fit, newdata=feature.vectors.train))
   estimated.results.validation <- as.vector(predict(fit, newdata=feature.vectors.validation))
-  
+
   # calculate error
   J.train <- mean((estimated.results.train - observation.data.train)^2)
   J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
-  
+
   ret <- list()
   ret[['fit']] <- fit
   ret[['observation.data.train']] <- observation.data.train
@@ -134,7 +195,7 @@ mo444SVM <- function(use.grouped=FALSE) {
   ret[['observation.data.validation']] <- observation.data.validation
   ret[['estimated.results.validation']] <- estimated.results.validation
   ret[['J.validation']] <- J.validation
-  
+
   return(ret)
 }
 
@@ -173,6 +234,7 @@ feature.vectors.norm.grouped <<- cbind(feature.vectors.norm.grouped, 1) # add bi
 data.frame.norm.grouped <<- data.frame(feature.vectors.norm.grouped, observation.data=observation.data.grouped)
 
 # Execute analysis
-regression.results <- mo444LinearRegression(use.grouped=F, min.retweets.count=10, time.stamps=5)
+regression.results <- mo444LinearRegression(use.grouped=F, min.retweets.count=1, time.stamps.from=20, time.stamps.to=26)
 decision.tree.results <- mo444DecisionTree(use.grouped=F, min.retweets.count=100, time.stamps=10)
+euclidian.distance.results <- mo444EuclidianDistanceToKMeans()
 svm.results <- mo444SVM(use.grouped=T)
