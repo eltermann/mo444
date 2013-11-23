@@ -1,9 +1,3 @@
-#Input
-#feature vectors
-#observation.data - the data we gathered
-#mean.y and sd.y are related to the normalization of observation.
-#mean is mean
-#sd is standard deviation
 mo444LinearRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.stamps.from=1, time.stamps.to=28) {
   library('MASS')
 
@@ -35,8 +29,8 @@ mo444LinearRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.
   # calculate errors
   J.train <- mean((estimated.results.train - observation.data.train)^2)
   J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
-  minmax.train <- data.frame(min=0.9*observation.data.train, max=1.1*observation.data.train)
-  minmax.validation <- data.frame(min=0.9*observation.data.validation, max=1.1*observation.data.validation)
+  minmax.train <- data.frame(min=0.85*observation.data.train, max=1.15*observation.data.train)
+  minmax.validation <- data.frame(min=0.85*observation.data.validation, max=1.15*observation.data.validation)
   hit.rate.train <- sapply(1:length(estimated.results.train), function(x) {
     return(ifelse(estimated.results.train[x]>=minmax.train[x, 'min'] && estimated.results.train[x]<=minmax.train[x, 'max'], 1, 0))
   })
@@ -57,6 +51,69 @@ mo444LinearRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.
   ret[['hit.rate.train']] <- hit.rate.train
   ret[['hit.rate.validation']] <- hit.rate.validation
 
+  return(ret)
+}
+
+mo444PolynomialRegression <- function(use.grouped=FALSE, min.retweets.count=1, time.stamps.from=1) {
+  if (use.grouped) {
+    local.feature.vectors <- feature.vectors.grouped
+    local.observation.data <- observation.data.grouped
+  }
+  else {
+    local.feature.vectors <- feature.vectors
+    local.observation.data <- observation.data
+  }
+  indexes <- which(local.observation.data > min.retweets.count)
+  local.feature.vectors <- local.feature.vectors[indexes,time.stamps.from:27]
+  local.observation.data <- local.observation.data[indexes]
+
+  local.num.tweets <- length(local.observation.data)
+  local.train.size <- 0.8 * local.num.tweets
+
+  times <- c(
+    10, 20,30, 40,50, # 10 to 50 seconds
+    1*60, 1.5*60, 2*60, 3*60, 4*60, 5*60, 6*60, 7*60, 8*60, 9*60, 10*60, # 1 to 10 minutes
+    15*60, 20*60, 25*60, 30*60, # 15 to 30 minutes
+    1*60*60, 1.5*60*60, 2*60*60, 3*60*60, 4*60*60, 5*60*60, 6*60*60, 10*60*60 # 1 to 10 hours
+  )
+
+  feature.vectors.train <- local.feature.vectors[1:local.train.size,]
+  feature.vectors.validation <- local.feature.vectors[(local.train.size+1):local.num.tweets,]
+  observation.data.train <- local.observation.data[1:local.train.size]
+  observation.data.validation <- local.observation.data[(local.train.size+1):local.num.tweets]
+
+  poly.X <- times[time.stamps.from:27]
+  poly.Y <- colMeans(feature.vectors.train)
+  fit <- lm(poly.Y~poly(poly.X, 2, raw=TRUE))
+  #plot(poly.X,poly.Y)
+  #lines(poly.X, predict(fit, data.frame(x=poly.X)), col='red')
+
+  estimated.results.train <- as.vector(predict(fit, newdata=data.frame(feature.vectors.train)))
+  estimated.results.validation <- as.vector(predict(fit, newdata=feature.vectors.validation))
+  
+  # calculate errors
+  J.train <- mean((estimated.results.train - observation.data.train)^2)
+  J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
+  minmax.train <- data.frame(min=0.85*observation.data.train, max=1.15*observation.data.train)
+  minmax.validation <- data.frame(min=0.85*observation.data.validation, max=1.15*observation.data.validation)
+  hit.rate.train <- sapply(1:length(estimated.results.train), function(x) {
+    return(ifelse(estimated.results.train[x]>=minmax.train[x, 'min'] && estimated.results.train[x]<=minmax.train[x, 'max'], 1, 0))
+  })
+  hit.rate.train <- mean(hit.rate.train)
+  hit.rate.validation <- sapply(1:length(estimated.results.validation), function(x) {
+    return(ifelse(estimated.results.validation[x]>=minmax.validation[x, 'min'] && estimated.results.validation[x]<=minmax.validation[x, 'max'], 1, 0))
+  })
+  hit.rate.validation <- mean(hit.rate.validation)
+  
+  ret <- list()
+  ret[['observation.data.train']] <- observation.data.train
+  ret[['estimated.results.train']] <- estimated.results.train
+  ret[['J.train']] <- J.train
+  ret[['observation.data.validation']] <- observation.data.validation
+  ret[['estimated.results.validation']] <- estimated.results.validation
+  ret[['J.validation']] <- J.validation
+  ret[['hit.rate.train']] <- hit.rate.train
+  ret[['hit.rate.validation']] <- hit.rate.validation
   return(ret)
 }
 
@@ -136,9 +193,9 @@ mo444DecisionTree <- function(use.grouped=FALSE, min.retweets.count=1, time.stam
   control <- rpart.control(xval=10, minsplit=4, minbucket=2, cp=0)
   #fit <- rpart(observation.data~retweets10sec+retweets20sec+retweets30sec+retweets40sec+retweets50sec+retweets60sec+retweets90sec+retweets02min+retweets03min+retweets04min+retweets05min+retweets06min+retweets07min+retweets08min+retweets09min+retweets10min+retweets15min+retweets20min+retweets25min+retweets30min+retweets60min+retweets90min+retweets2h+retweets3h+retweets4h+retweets5h+retweets6h+retweets10h+followers10sec+followers20sec+followers30sec+followers40sec+followers50sec+followers60sec+followers90sec+followers02min+followers03min+followers04min+followers05min+followers10min+followers15min+followers20min+followers25min+followers30min+followers60min+followers90min+followers2h+followers3h+followers4h+followers5h+followers6h+followers10h+week.sunday+week.monday+week.tuesday+week.wednesday+week.thursday+week.friday+week.saturday+hour.0to4+hour.4to8+hour.8to12+hour.12to16+hour.16to20+hour.20to24, data=feature.vectors.train,observation.data.train, method='anova', control=control)
   fit <- rpart(as.formula(paste('observation.data~', paste(colnames(feature.vectors)[c(1:time.stamps, 29:(28+time.stamps), 57:69)], collapse='+'), sep='')), data=feature.vectors.train, observation.data.train, method='anova', control=control)
-  fit.cp <- printcp(fit)
-  min.cp <- fit.cp[which.min(fit.cp[,'xerror']),'CP']
-  fit <- prune(fit, min.cp)
+  #fit.cp <- printcp(fit)
+  #min.cp <- fit.cp[which.min(fit.cp[,'xerror']),'CP']
+  #fit <- prune(fit, min.cp)
 
   #plot(fit, uniform=T)
   #text(fit, use.n = TRUE, cex = 0.75)
@@ -149,6 +206,16 @@ mo444DecisionTree <- function(use.grouped=FALSE, min.retweets.count=1, time.stam
   # calculate error
   J.train <- mean((estimated.results.train - observation.data.train)^2)
   J.validation <- mean((estimated.results.validation - observation.data.validation)^2)
+  minmax.train <- data.frame(min=0.85*observation.data.train, max=1.15*observation.data.train)
+  minmax.validation <- data.frame(min=0.85*observation.data.validation, max=1.15*observation.data.validation)
+  hit.rate.train <- sapply(1:length(estimated.results.train), function(x) {
+    return(ifelse(estimated.results.train[x]>=minmax.train[x, 'min'] && estimated.results.train[x]<=minmax.train[x, 'max'], 1, 0))
+  })
+  hit.rate.train <- mean(hit.rate.train)
+  hit.rate.validation <- sapply(1:length(estimated.results.validation), function(x) {
+    return(ifelse(estimated.results.validation[x]>=minmax.validation[x, 'min'] && estimated.results.validation[x]<=minmax.validation[x, 'max'], 1, 0))
+  })
+  hit.rate.validation <- mean(hit.rate.validation)
 
   ret <- list()
   ret[['fit']] <- fit
@@ -158,6 +225,8 @@ mo444DecisionTree <- function(use.grouped=FALSE, min.retweets.count=1, time.stam
   ret[['observation.data.validation']] <- observation.data.validation
   ret[['estimated.results.validation']] <- estimated.results.validation
   ret[['J.validation']] <- J.validation
+  ret[['hit.rate.train']] <- hit.rate.train
+  ret[['hit.rate.validation']] <- hit.rate.validation
   
   return(ret)
 }
@@ -235,6 +304,6 @@ data.frame.norm.grouped <<- data.frame(feature.vectors.norm.grouped, observation
 
 # Execute analysis
 regression.results <- mo444LinearRegression(use.grouped=F, min.retweets.count=1, time.stamps.from=20, time.stamps.to=26)
-decision.tree.results <- mo444DecisionTree(use.grouped=F, min.retweets.count=100, time.stamps=10)
+decision.tree.results <- mo444DecisionTree(use.grouped=F, min.retweets.count=1, time.stamps=27)
 euclidian.distance.results <- mo444EuclidianDistanceToKMeans()
 svm.results <- mo444SVM(use.grouped=T)
